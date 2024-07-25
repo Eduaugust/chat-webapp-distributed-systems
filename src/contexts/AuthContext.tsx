@@ -4,6 +4,8 @@ export interface AuthContextType {
   isAuthenticated: boolean | string;
   login: (username: string) => void;
   logout: () => void;
+  isServersConnected: boolean;
+  setConnect: (value: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -22,12 +24,15 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | string>(false);
+  const [isServersConnected, setIsServersConnected] = useState<boolean>(false);
 
   const login = (username: string) => setIsAuthenticated(username);
   const logout = () => setIsAuthenticated(false);
 
+  const setConnect = (value: boolean) => setIsServersConnected(value);
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, isServersConnected, setConnect}}>
       {children}
     </AuthContext.Provider>
   );

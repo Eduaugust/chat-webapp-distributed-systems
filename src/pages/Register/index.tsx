@@ -21,7 +21,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ api }) => {
   const navigate = useNavigate();
     const webScoket1= useWebSocket( process.env.REACT_APP_API_URL1 as string);
   const webScoket2 = useWebSocket( process.env.REACT_APP_API_URL2 as string);
-  const { login } = useAuth();
+  const { login, isServersConnected, setConnect } = useAuth();
 
   const openNotificationWithIcon = useCallback(
     (type: NotificationType, message: string, description: string) => {
@@ -52,7 +52,18 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ api }) => {
       return;
     }
 
-    // Exemplo de envio de mensagem via WebSocketUtil
+    if (!webScoket1.checkConnection()){
+      webScoket1.connectWebSocket();
+    }
+    if (!webScoket2.checkConnection()){
+      webScoket2.connectWebSocket();
+    }
+
+    if (!webScoket1.checkConnection() && !webScoket2.checkConnection() && isServersConnected) {
+      setConnect(false);
+    } else if ((webScoket1.checkConnection() || webScoket2.checkConnection()) && !isServersConnected) {
+      setConnect(true)
+    }
     webScoket1.send(`/register ${data.username} ${data.password}`);
     webScoket2.send(`/register ${data.username} ${data.password}`);
   };

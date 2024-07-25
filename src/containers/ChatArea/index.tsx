@@ -1,26 +1,33 @@
-import { format, isToday, isYesterday, parseISO } from 'date-fns';
-import React, { useEffect, useRef, useState } from 'react';
+import { format, isToday, isYesterday, parseISO, set } from 'date-fns';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Controller, useForm } from 'react-hook-form';
 import useWebSocket from '../../api';
 import { Col, Row } from 'antd';
 import emojiRegex from 'emoji-regex';
 import EmojiPicker from 'emoji-picker-react';
+import { useNavigate } from 'react-router-dom';
+import { NotificationType } from '../../common/notificationType';
+import { NotificationInstance } from 'antd/es/notification/interface';
 
 interface ChatAreaProps {
-  messages: Message[];
   selectedUser: string;
+  api: NotificationInstance;
 }
-
+interface Messages {
+  [key: string]: Message[];
+}
 interface Message {
   sender: string;
   message: string;
   timestamp: string;
 }
 
-const ChatArea: React.FC<ChatAreaProps> = ({ messages, selectedUser }) => {
-  const { isAuthenticated } = useAuth();
-  const { control, handleSubmit, reset, watch, setValue } = useForm<{ message: string }>();
+const ChatArea: React.FC<ChatAreaProps> = ({ selectedUser, api }) => {
+  const { isAuthenticated, isServersConnected, setConnect } = useAuth();
+  const { control, handleSubmit, reset, watch, setValue } = useForm<{ msgToSend: string }>();
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState<Message[]>([]);
   const webScoket1= useWebSocket( process.env.REACT_APP_API_URL1 as string);
   const webScoket2 = useWebSocket( process.env.REACT_APP_API_URL2 as string);
 
@@ -28,18 +35,106 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, selectedUser }) => {
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
+  const msgToSend = watch("msgToSend", "");
+
   // Limita o tamanho da mensagem e envia
-  const handleSendMessage = (data: { message: string }) => {
+  const handleSendMessage = (data: { msgToSend: string }) => {
     const maxLength = 85;
-    const message = data.message.slice(0, maxLength); // Limita o tamanho da mensagem
+    const message = data.msgToSend.slice(0, maxLength); // Limita o tamanho da mensagem
 
     if (!message) return;
+    if (!webScoket1.checkConnection()){
+      webScoket1.connectWebSocket();
+    }
+    if (!webScoket2.checkConnection()){
+      webScoket2.connectWebSocket();
+    }
+
+    if (!webScoket1.checkConnection() && !webScoket2.checkConnection() && isServersConnected) {
+      setConnect(false);
+    } else if ((webScoket1.checkConnection() || webScoket2.checkConnection()) && !isServersConnected) {
+      setConnect(true)
+    }
     webScoket1.send(`/sendMessage ${isAuthenticated} ${selectedUser} ${message}`);
     webScoket2.send(`/sendMessage ${isAuthenticated} ${selectedUser} ${message}`);
     reset();
   };
 
-  const message = watch("message", "");
+  const openNotificationWithIcon = useCallback(
+    (type: NotificationType, message: string, description: string) => {
+      api[type]({
+        message,
+        description,
+      });
+    },
+    [api]
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isAuthenticated) {
+        navigate('/');
+      }
+      if (!webScoket1.checkConnection()){
+        webScoket1.connectWebSocket();
+      }
+      if (!webScoket2.checkConnection()){
+        webScoket2.connectWebSocket();
+      }
+
+      if (!webScoket1.checkConnection() && !webScoket2.checkConnection() && isServersConnected) {
+        setConnect(false);
+      } else if ((webScoket1.checkConnection() || webScoket2.checkConnection()) && !isServersConnected) {
+        setConnect(true)
+      }
+      webScoket1.send('/getAll ' + isAuthenticated);
+      webScoket2.send('/getAll ' + isAuthenticated);
+    }, 100);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [webScoket1, webScoket2, navigate, isAuthenticated, openNotificationWithIcon, setConnect, isServersConnected]);
+
+  
+
+  const handleWebSocketMessage = useCallback(
+    (newMsg: any) => {
+      if (newMsg.status === 'error') {
+        openNotificationWithIcon('error', 'Erro', newMsg.data);
+        return;
+      } else if (typeof newMsg.data === 'string') {
+        return;
+      }
+
+      try {
+        newMsg = newMsg.data as Messages;
+        if (!selectedUser) {
+          return;
+        }
+        
+        setMessages(newMsg[selectedUser] || []);
+      } catch (error) {
+      }
+    },
+    [setMessages, selectedUser, openNotificationWithIcon]
+  );
+
+  useEffect(() => {
+    if (webScoket1.receivedMessages) {
+      handleWebSocketMessage(webScoket1.receivedMessages);
+    }
+  }, [webScoket1.receivedMessages, handleWebSocketMessage]);
+
+  useEffect(() => {
+    if (webScoket2.receivedMessages) {
+      handleWebSocketMessage(webScoket2.receivedMessages);
+    }
+  }, [webScoket2.receivedMessages, handleWebSocketMessage]);
+
+  
+
+  // const message = watch("message", "");
 
   // Formata o timestamp da mensagem
   const formatTimestamp = (timestamp: string, prevTimestamp: string) => {
@@ -103,7 +198,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, selectedUser }) => {
 
   // Adiciona emoji ao campo de mensagem
   const handleEmojiClick = (emoji: any) => {
-    setValue('message', message + emoji.emoji);
+    setValue('msgToSend', msgToSend + emoji.emoji);
     setShowEmojiPicker(false);
   };
 
@@ -143,7 +238,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, selectedUser }) => {
             </div>
           )}
           <Controller
-            name="message"
+            name="msgToSend"
             control={control}
             defaultValue=""
             render={({ field }) => (
@@ -162,7 +257,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, selectedUser }) => {
             Enviar
           </button>
         </div>
-        <p className="text-sm text-gray-600 mt-2">{countVisibleCharacters(message)}/85 caracteres</p>
+        <p className="text-sm text-gray-600 mt-2">{countVisibleCharacters(msgToSend)}/85 caracteres</p>
       </form>
     </div>
   );

@@ -18,7 +18,7 @@ interface Messages {
 }
 
 const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isServersConnected, setConnect } = useAuth();
   const navigate = useNavigate();
 
     const webScoket1= useWebSocket( process.env.REACT_APP_API_URL1 as string);
@@ -34,6 +34,18 @@ const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
       if (!isAuthenticated) {
         navigate('/');
       }
+      if (!webScoket1.checkConnection()){
+        webScoket1.connectWebSocket();
+      }
+      if (!webScoket2.checkConnection()){
+        webScoket2.connectWebSocket();
+      }
+
+      if (!webScoket1.checkConnection() && !webScoket2.checkConnection() && isServersConnected) {
+        setConnect(false);
+      } else if ((webScoket1.checkConnection() || webScoket2.checkConnection()) && !isServersConnected) {
+        setConnect(true)
+      }
       webScoket1.send('/getAll ' + isAuthenticated);
       webScoket2.send('/getAll ' + isAuthenticated);
     }, 1000);
@@ -41,7 +53,7 @@ const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
     return () => {
       clearInterval(interval);
     };
-  }, [webScoket1, webScoket2, navigate, isAuthenticated]);
+  }, [webScoket1, webScoket2, navigate, isAuthenticated, isServersConnected, setConnect]);
 
   const openNotificationWithIcon = useCallback(
     (type: NotificationType, message: string, description: string) => {
@@ -69,7 +81,6 @@ const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
           return;
         }
         if (messages !== newMsg) {
-          console.log('sao diferentes')
           for (const [friend, msgArray] of Object.entries(newMsg)) {
             if (friend !== selectedUser && !!msgArray && !!messages[friend] && (msgArray as []).length !== messages[friend].length && !newMessageFriend.includes(friend)) {
                 setNewMessageFriend([...newMessageFriend, friend]);
@@ -79,11 +90,11 @@ const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
         if (newMessageFriend.includes(selectedUser)) {
           setNewMessageFriend(newMessageFriend.filter((friend) => friend !== selectedUser));
         }
-        console.log(messages[selectedUser])
-        console.log(newMsg[selectedUser])
+        if (newMsg === undefined || newMsg === null) {
+          return;
+        }
         setMessages(newMsg as Messages);
       } catch (error) {
-        console.error('Erro ao analisar a mensagem:', error);
       }
     },
     [selectedUser, openNotificationWithIcon, messages, newMessageFriend]
@@ -112,7 +123,7 @@ const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
       />
 
       {selectedUser && messages[selectedUser] ? (
-        <ChatArea messages={messages[selectedUser]} selectedUser={selectedUser} />
+        <ChatArea api={api} selectedUser={selectedUser} />
       ) : (
         <div className="flex-1 flex items-center justify-center">
           <h1 className="text-2xl">Selecione um amigo para começar a conversar</h1>

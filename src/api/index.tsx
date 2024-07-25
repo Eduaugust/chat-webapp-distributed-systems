@@ -13,7 +13,6 @@ const useWebSocket = (url: string) => {
     ws.current = new WebSocket(url);
 
     ws.current.onopen = () => {
-      console.log('Conexão WebSocket aberta');
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current);
         reconnectTimeout.current = null;
@@ -21,22 +20,31 @@ const useWebSocket = (url: string) => {
     };
 
     ws.current.onmessage = (event) => {
-      const normalizedMessage = event.data.replace(/'/g, '"');
-      const parsedMessage = JSON.parse(normalizedMessage);
-      if (parsedMessage !== receivedMessages)
-        setReceivedMessages(parsedMessage);
+      try {
+        const normalizedMessage = event.data.replace(/'/g, '"');
+        const parsedMessage = JSON.parse(normalizedMessage);
+        if (parsedMessage !== receivedMessages)
+          setReceivedMessages(parsedMessage);
+      }
+      catch (error) {
+        console.error('Error parsing message', error);
+      }
     };
 
     ws.current.onerror = (error) => {
-      console.error('Erro na conexão WebSocket:', error);
-    };
-
-    ws.current.onclose = () => {
-      console.log('Conexão WebSocket fechada');
+      console.error('WebSocket error ');
       if (!reconnectTimeout.current) {
         reconnectTimeout.current = setTimeout(() => {
           connectWebSocket();
-        }, 5000);
+        }, 1000);
+      }
+    };
+
+    ws.current.onclose = () => {
+      if (!reconnectTimeout.current) {
+        reconnectTimeout.current = setTimeout(() => {
+          connectWebSocket();
+        }, 1000);
       }
     };
   }, [url, receivedMessages]);
@@ -55,24 +63,34 @@ const useWebSocket = (url: string) => {
     };
   }, [connectWebSocket]);
 
+  const close = useCallback(() => {
+    if (ws.current) {
+      ws.current.close();
+    }
+   
+  }, []);
+
   const send = useCallback((message: string) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       ws.current.send(message);
     }
   }, []);
 
-  const close = useCallback(() => {
-    if (ws.current) {
-      reconnectTimeout.current = setTimeout(() => {
-        connectWebSocket();
-        }, 5000);
+  const checkConnection = useCallback(() => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      return true;
     }
-  }, [connectWebSocket]);
+    return false;
+  }, []);
+
+  
 
   return {
     receivedMessages,
     send,
-    close
+    close,
+    connectWebSocket,
+    checkConnection
   };
 };
 
