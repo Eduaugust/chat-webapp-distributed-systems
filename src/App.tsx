@@ -1,26 +1,27 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { notification } from 'antd';
+import RegisterForm from './pages/Register';
+import LoginForm from './pages/Login';
+import Home from './pages/Home';
+import { AuthProvider } from './contexts/AuthContext';
+import PrivateRoute from './components/PrivateRoute';
 
-function App() {
+const App: React.FC = () => {
+  const [api, contextHolder] = notification.useNotification();
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AuthProvider>
+      {contextHolder}
+      <Router>
+        <Routes>
+          <Route path="/" element={<LoginForm api={api} />} />
+          <Route path="/register" element={<RegisterForm api={api} />} />
+          <Route path="/home" element={<PrivateRoute><Home api={api} /></PrivateRoute>} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
-}
+};
 
 export default App;
