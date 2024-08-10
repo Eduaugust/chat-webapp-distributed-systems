@@ -11,7 +11,7 @@ const ConnectionStatusBanner: React.FC = () => {
       description="Você está offline e não pode acessar todos os recursos."
       type="warning"
       showIcon
-      style={{ marginBottom: 20, bottom: 0, position: 'fixed', width: '100%' }}
+      style={{ marginBottom: 20, top: 5, right: 5, position: 'fixed', width: '30%', zIndex: 1000 }}
     />
   ) : null;
 };
