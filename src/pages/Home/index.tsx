@@ -20,8 +20,8 @@ interface Messages {
 const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
   const { isAuthenticated, isServersConnected, setConnect } = useAuth();
   const navigate = useNavigate();
-
-    const webScoket1= useWebSocket( process.env.REACT_APP_API_URL1 as string);
+  // Define a conexao com ambos os servidores via socket
+  const webScoket1= useWebSocket( process.env.REACT_APP_API_URL1 as string);
   const webScoket2 = useWebSocket( process.env.REACT_APP_API_URL2 as string);
 
   const [friends, setFriends] = useState<string[]>();
@@ -29,6 +29,7 @@ const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [newMessageFriend, setNewMessageFriend] = useState<string[]>([]);
 
+  // Verifica a conexao com os servidores e tenta conectar
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isAuthenticated) {
@@ -55,6 +56,7 @@ const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
     };
   }, [webScoket1, webScoket2, navigate, isAuthenticated, isServersConnected, setConnect]);
 
+  // Abre as notificacoes
   const openNotificationWithIcon = useCallback(
     (type: NotificationType, message: string, description: string) => {
       api[type]({
@@ -65,6 +67,7 @@ const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
     [api]
   );
 
+  // Lida com o recebimento de mensagens para adicionar a notificacao de nova mensagem no amigo certo
   const handleWebSocketMessage = useCallback(
     (newMsg: any) => {
       if (newMsg.status === 'error') {
@@ -100,6 +103,7 @@ const Home: React.FC<{ api: NotificationInstance }> = ({ api }) => {
     [selectedUser, openNotificationWithIcon, messages, newMessageFriend]
   );
 
+  // Recebe as mensagens de ambos os servidores
   useEffect(() => {
     if (webScoket1.receivedMessages) {
       handleWebSocketMessage(webScoket1.receivedMessages);

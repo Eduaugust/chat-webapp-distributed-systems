@@ -5,6 +5,7 @@ const useWebSocket = (url: string) => {
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // Cria a conexao com o web socket e lida com os diferentes tipos de mensagens
   const connectWebSocket = useCallback(() => {
     if (ws.current) {
       ws.current.close();

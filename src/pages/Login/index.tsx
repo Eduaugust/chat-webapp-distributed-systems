@@ -18,6 +18,7 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ api }) => {
   const { control, handleSubmit, getValues } = useForm<FormData>();
   const navigate = useNavigate();
+  // Definimos nossa conexao com ambos os servidores via socket
   const webScoket1= useWebSocket( process.env.REACT_APP_API_URL1 as string);
   const webScoket2 = useWebSocket( process.env.REACT_APP_API_URL2 as string);
   const { login, setConnect, isServersConnected } = useAuth();
@@ -32,6 +33,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ api }) => {
     [api]
   );
 
+  // Envia os dados de login do usuario para serem verificados pelo backend
   const onSubmit = (data: FormData) => {
     if (!data.username || !data.password) {
       openNotificationWithIcon('error', "Erro", 'Preencha todos os campos.');
@@ -55,6 +57,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ api }) => {
     webScoket2.send(`/login ${data.username} ${data.password}`);
   };
 
+  // Recebe verificação se o login foi bem sucedido
   const handleWebSocketMessage = useCallback(
     (message: any, username: string) => {
       if (message.status === 'success') {
@@ -69,6 +72,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ api }) => {
     [navigate, openNotificationWithIcon, login]
   );
 
+  // Fica verificando o socket
   useEffect(() => {
     if (webScoket1.receivedMessages) {
       handleWebSocketMessage(webScoket1.receivedMessages, getValues().username);

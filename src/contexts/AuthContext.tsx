@@ -22,6 +22,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Verificacao de autenticidade
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | string>(false);
   const [isServersConnected, setIsServersConnected] = useState<boolean>(false);
