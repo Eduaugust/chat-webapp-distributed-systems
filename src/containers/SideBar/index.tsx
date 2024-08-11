@@ -22,6 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ friends, newMessageFriend, setSelecte
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Adiciona o amigo
   const handleAddFriend = () => {
     const username = inputRef.current?.value.trim();
       if (username) {
